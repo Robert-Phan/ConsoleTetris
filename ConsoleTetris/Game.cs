@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ConsoleTetris;
 
@@ -119,7 +116,7 @@ internal static class Game
 	}
 	#endregion
 
-	internal static int? Start()
+	internal static int Start()
 	{
 		Height += 2;
 
@@ -135,7 +132,7 @@ internal static class Game
 			nextPiece = new();
 			nextPiece.DisplayToSide();
 
-			if (!piece.StartControl()) return null;
+			if (!piece.StartControl()) return Score;
 
 			DroppedBlocks.CheckForLine();
 			if (DroppedBlocks.CheckFailure()) return Score;

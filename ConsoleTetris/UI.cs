@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NumberStyles = System.Globalization.NumberStyles;
 
 namespace ConsoleTetris;
@@ -68,7 +66,7 @@ class InputSelection
 				Console.SetCursorPosition(x, y + Index);
 				Console.Write("> " + Selections.GetKVPString(Index));
 			}
-			else if (key == ConsoleKey.Enter)
+			else if (key == ConsoleKey.Enter || key == ConsoleKey.X)
 			{
 				Console.ResetColor();
 				Index = 0;
@@ -163,17 +161,13 @@ class Selection
 				Console.SetCursorPosition(x, y + Index);
 				Console.Write("> " + SelectionsArray[Index]);
 			}
-			else if (key == ConsoleKey.Enter)
+			else if (key == ConsoleKey.Enter || key == ConsoleKey.X)
 			{
 				Console.ResetColor();
 				var i = Index;
 				Index = 0;
-				return SelectionsArray[i];
-			}
-			else if (key == ConsoleKey.X)
-			{
-				Console.ResetColor();
-				return null;
+				return key == ConsoleKey.Enter ? SelectionsArray[i] 
+					: null;
 			}
 		}
 	}
@@ -181,13 +175,7 @@ class Selection
 
 static internal class UI
 {
-	static Selection StartScreen { get; } = new(new[]
-	{
-		"Play",
-		"Settings",
-		"Help"
-	}, (26, 7));
-
+	#region Settings
 	static InputSelection GameSettings { get; } = new(new Dictionary<string, string>
 	{
 		{"Width", "10"},
@@ -195,45 +183,6 @@ static internal class UI
 		{"Fall Time", "800"},
 		{"Enable Drop Projection", "True" }
 	}, (20, 7));
-
-	static Selection HelpScreen { get; } = new(new[]
-	{
-		"Gameplay Controls",
-		"Gameplay Content",
-		"Gameplay Settings"
-	}, (22, 7));
-
-	internal static void Start()
-	{
-		Console.CursorVisible = false;
-		Console.Clear();
-		if (OperatingSystem.IsWindows())
-			Console.SetWindowSize(60, 30);
-		DisplayLogo();
-
-		var selection = StartScreen.Start();
-
-		if (selection == null) return;
-		if (selection == "Play")
-		{
-			Game.Start();
-			Game.ResetGame();
-			Start();
-		}
-		else if (selection == "Settings")
-		{
-			Console.Clear();
-			var settings = GameSettings.Start();
-			ParseSettings(settings);
-			Start();
-		}
-		else if (selection == "Help")
-		{
-			DisplayHelp();
-			Console.Clear();
-			Start();
-		};
-	}
 
 	static void ParseSettings(Dictionary<string, string> settings)
 	{
@@ -260,6 +209,16 @@ static internal class UI
 			new[] { 't', 'T', 'y', 'Y' }
 			.Any(ch => settings["Enable Drop Projection"].Contains(ch));
 	}
+	#endregion
+
+	#region Help Screen
+	static Selection HelpScreen { get; } = new(new[]
+	{
+		"Gameplay Controls",
+		"Gameplay Content",
+		"Gameplay Settings",
+		"UI Navigation Controls"
+	}, (19, 7));
 
 	static string GameplayControls { get; } = @"
 GAMEPLAY CONTROLS
@@ -302,6 +261,21 @@ GAMEPLAY SETTINGS
 'Enable Drop Projection': Whether the player can see a piece's drop projection or not.
 ";
 
+	static string UINavigation { get; } = @"
+UI NAVIGATION CONTROLS
+
+On Title Screen/Help Screen
+┌
+│'X' key: Go back one menu/Exit game
+│Enter key: Select option
+
+In setting screen
+┌
+│Enter key: Finish inputting
+│'X' key: Return to title screen
+│Tab key: Select input
+";
+
 	static void DisplayHelp()
 	{
 		Console.Clear();
@@ -312,10 +286,11 @@ GAMEPLAY SETTINGS
 		{
 			Console.Clear();
 
-			var helpMessage = 
+			var helpMessage =
 				(helpSelection == "Gameplay Controls" ? GameplayControls :
 				helpSelection == "Gameplay Content" ? GameplayContent :
-				GameplaySettings).Split('\n');
+				helpSelection == "Gameplay Settings" ? GameplaySettings :
+				UINavigation).Split('\n');
 
 			if (OperatingSystem.IsWindows())
 			{
@@ -338,6 +313,18 @@ GAMEPLAY SETTINGS
 			DisplayHelp();
 		}
 	}
+	#endregion
+
+	#region High Score
+	static int SessionHighScore { get; set; } = 0;
+
+	static void UpdateSessionHighScore()
+	{
+		var highScoreString = $"Session High Score: {SessionHighScore}";
+		Console.SetCursorPosition(30 - highScoreString.Length / 2, 12);
+		Console.WriteLine(highScoreString);
+	}
+	#endregion
 
 	static string Logo { get; } = @" 
  _____  _____  _____  ____   ___  ____  
@@ -355,5 +342,48 @@ GAMEPLAY SETTINGS
 			Console.SetCursorPosition(10, i);
 			Console.WriteLine(logoByLine[i]);
 		}
+	}
+	
+	static Selection TitleScreen { get; } = new(new[]
+	{
+		"Play",
+		"Settings",
+		"Help"
+	}, (26, 7));
+
+	internal static void Start()
+	{
+		Console.CursorVisible = false;
+		Console.Clear();
+		if (OperatingSystem.IsWindows())
+			Console.SetWindowSize(60, 30);
+		DisplayLogo();
+		UpdateSessionHighScore();
+
+		var selection = TitleScreen.Start();
+
+		if (selection == null) return;
+		if (selection == "Play")
+		{
+			var gameScore = Game.Start();
+			if (gameScore > SessionHighScore) 
+				SessionHighScore = gameScore;
+
+			Game.ResetGame();
+			Start();
+		}
+		else if (selection == "Settings")
+		{
+			Console.Clear();
+			var settings = GameSettings.Start();
+			ParseSettings(settings);
+			Start();
+		}
+		else if (selection == "Help")
+		{
+			DisplayHelp();
+			Console.Clear();
+			Start();
+		};
 	}
 }
